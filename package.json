@@ -1,7 +1,7 @@
 {
   "name": "pi-file-picker",
-  "version": "0.1.1",
-  "description": "macOS native file picker for pi — pick files in a real Finder dialog and insert @path references",
+  "version": "0.2.0",
+  "description": "Native file picker for pi (macOS/Windows) — pick files in a real dialog and insert @path references",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GoetheDady/pi-file-picker.git"
@@ -16,7 +16,9 @@
     "pi",
     "file-picker",
     "macos",
-    "osascript"
+    "windows",
+    "osascript",
+    "powershell"
   ],
   "files": [
     "extensions",

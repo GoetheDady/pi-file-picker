@@ -1,8 +1,9 @@
 /**
- * Native file picker (macOS).
+ * Native file picker (macOS / Windows).
  *
- * Opens the real Finder file dialog and inserts `@path` references into the
- * editor — handy when a fullscreen terminal makes drag-and-drop awkward.
+ * Opens the OS file dialog (AppleScript on macOS, WinForms on Windows) and
+ * inserts `@path` references into the editor — handy when a fullscreen
+ * terminal makes drag-and-drop awkward.
  *
  *   /pick          command
  *   ctrl+shift+o   shortcut
@@ -10,7 +11,7 @@
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-const SCRIPT = [
+const APPLESCRIPT = [
 	'set fs to choose file with multiple selections allowed',
 	'set out to ""',
 	'repeat with f in fs',
@@ -19,14 +20,43 @@ const SCRIPT = [
 	"return out",
 ].join("\n");
 
+// WinForms needs STA (powershell.exe defaults to STA); UTF-8 output so
+// non-ASCII (Chinese) paths survive the pipe; [char]10 avoids double quotes
+// inside the script; exit 1 = user cancelled.
+const POWERSHELL = [
+	"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+	"Add-Type -AssemblyName System.Windows.Forms",
+	"$d = New-Object System.Windows.Forms.OpenFileDialog",
+	"$d.Multiselect = $true",
+	"$d.Title = 'Pick files for pi'",
+	"if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 1 }",
+	"Write-Output ($d.FileNames -join [char]10)",
+].join("\n");
+
+/** Pick the right dialog command for this OS; null = unsupported. */
+function pickerFor(): { cmd: string; args: string[] } | null {
+	if (process.platform === "darwin") return { cmd: "osascript", args: ["-e", APPLESCRIPT] };
+	if (process.platform === "win32")
+		return {
+			cmd: "powershell",
+			args: ["-NoProfile", "-NonInteractive", "-Command", POWERSHELL],
+		};
+	return null;
+}
+
 export default function (pi: ExtensionAPI) {
 	async function pick(ctx: ExtensionContext) {
 		if (!ctx.hasUI) return;
-		const r = await pi.exec("osascript", ["-e", SCRIPT]);
+		const job = pickerFor();
+		if (!job) {
+			ctx.ui.notify("File picker supports macOS and Windows only", "error");
+			return;
+		}
+		const r = await pi.exec(job.cmd, job.args);
 		if (r.code !== 0) return; // user cancelled
 		const refs = r.stdout
 			.split("\n")
-			.map((line) => line.trim())
+			.map((line) => line.trim()) // PowerShell pipes use CRLF; trim drops \r
 			.filter(Boolean)
 			.map((p) => (p.includes(" ") ? `@"${p}"` : `@${p}`));
 		if (refs.length === 0) return;
