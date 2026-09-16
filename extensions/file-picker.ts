@@ -17,11 +17,20 @@
  * so folders sit on ctrl+shift+r there.
  */
 
+import { posix, win32 } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 
-const applescript = (what: "file" | "folder") =>
+type Kind = "files" | "folders";
+
+/** Escape a path for an AppleScript string literal. */
+const forAppleScript = (s: string) => s.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+
+/** Escape a path for a PowerShell single-quoted string literal. */
+const forPowerShell = (s: string) => s.replaceAll("'", "''");
+
+const applescript = (what: "file" | "folder", cwd: string) =>
 	[
-		`set fs to choose ${what} with multiple selections allowed`,
+		`set fs to choose ${what} with prompt "Pick ${what}s for pi" default location (POSIX file "${forAppleScript(cwd)}") with multiple selections allowed`,
 		'set out to ""',
 		"repeat with f in fs",
 		"  set out to out & POSIX path of f & linefeed",
@@ -32,33 +41,35 @@ const applescript = (what: "file" | "folder") =>
 // WinForms needs STA (powershell.exe defaults to STA); UTF-8 output so
 // non-ASCII (Chinese) paths survive the pipe; [char]10 avoids double quotes
 // inside the script; exit 1 = user cancelled.
-const POWERSHELL_FILES = [
-	"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
-	"Add-Type -AssemblyName System.Windows.Forms",
-	"$d = New-Object System.Windows.Forms.OpenFileDialog",
-	"$d.Multiselect = $true",
-	"$d.Title = 'Pick files for pi'",
-	"if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 1 }",
-	"Write-Output ($d.FileNames -join [char]10)",
-].join("\n");
+const powershellFiles = (cwd: string) =>
+	[
+		"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+		"Add-Type -AssemblyName System.Windows.Forms",
+		"$d = New-Object System.Windows.Forms.OpenFileDialog",
+		"$d.Multiselect = $true",
+		"$d.Title = 'Pick files for pi'",
+		`$d.InitialDirectory = '${forPowerShell(cwd)}'`,
+		"if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 1 }",
+		"Write-Output ($d.FileNames -join [char]10)",
+	].join("\n");
 
 // FolderBrowserDialog is single-select — the .NET folder dialog has no
 // multi-select; the modern IFileDialog would need inline C# COM interop.
-const POWERSHELL_FOLDERS = [
-	"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
-	"Add-Type -AssemblyName System.Windows.Forms",
-	"$d = New-Object System.Windows.Forms.FolderBrowserDialog",
-	"$d.Description = 'Pick a folder for pi'",
-	"if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 1 }",
-	"Write-Output $d.SelectedPath",
-].join("\n");
-
-type Kind = "files" | "folders";
+const powershellFolders = (cwd: string) =>
+	[
+		"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+		"Add-Type -AssemblyName System.Windows.Forms",
+		"$d = New-Object System.Windows.Forms.FolderBrowserDialog",
+		"$d.Description = 'Pick a folder for pi'",
+		`$d.SelectedPath = '${forPowerShell(cwd)}'`,
+		"if ($d.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { exit 1 }",
+		"Write-Output $d.SelectedPath",
+	].join("\n");
 
 /** Pick the right dialog command for this OS; null = unsupported. */
-function pickerFor(kind: Kind): { cmd: string; args: string[] } | null {
+function pickerFor(kind: Kind, cwd: string): { cmd: string; args: string[] } | null {
 	if (process.platform === "darwin")
-		return { cmd: "osascript", args: ["-e", applescript(kind === "files" ? "file" : "folder")] };
+		return { cmd: "osascript", args: ["-e", applescript(kind === "files" ? "file" : "folder", cwd)] };
 	if (process.platform === "win32")
 		return {
 			cmd: "powershell",
@@ -66,33 +77,73 @@ function pickerFor(kind: Kind): { cmd: string; args: string[] } | null {
 				"-NoProfile",
 				"-NonInteractive",
 				"-Command",
-				kind === "files" ? POWERSHELL_FILES : POWERSHELL_FOLDERS,
+				kind === "files" ? powershellFiles(cwd) : powershellFolders(cwd),
 			],
 		};
 	return null;
 }
 
+/**
+ * Render absolute paths as `@` references: relative to the cwd when the file
+ * lives inside it (matching pi's own `@` completion), absolute otherwise.
+ * Paths with spaces get the `@"a b"` form; a path containing `"` cannot be
+ * quoted at all — pi has no escape convention — so it goes in raw and the
+ * caller warns about it.
+ */
+function toRefs(paths: string[], cwd: string) {
+	// Explicit posix/win32 instead of the default: node:path binds to the real
+	// platform, which would make the Windows branch untestable from macOS CI.
+	const api = process.platform === "win32" ? win32 : posix;
+	const unquotable: string[] = [];
+	const refs = paths.map((absolute) => {
+		const rel = api.relative(cwd, absolute);
+		const shown = rel && !rel.startsWith("..") ? rel : absolute;
+		if (!shown.includes(" ") || shown.includes('"')) {
+			if (shown.includes(" ") && shown.includes('"')) unquotable.push(shown);
+			return `@${shown}`;
+		}
+		return `@"${shown}"`;
+	});
+	return { refs, unquotable };
+}
+
 export default function (pi: ExtensionAPI) {
 	async function pick(ctx: ExtensionContext, kind: Kind) {
 		if (!ctx.hasUI) return;
-		const job = pickerFor(kind);
+		const job = pickerFor(kind, ctx.cwd);
 		if (!job) {
 			ctx.ui.notify("File picker supports macOS and Windows only", "error");
 			return;
 		}
 		const r = await pi.exec(job.cmd, job.args);
-		if (r.code !== 0) return; // user cancelled
-		const refs = r.stdout
+		if (r.code !== 0) {
+			// Cancel is silent: macOS reports "User canceled", the Windows script
+			// exits 1 with no output. Anything else is a real failure (no GUI
+			// session, permissions, missing WinForms) and must not be swallowed.
+			const stderr = r.stderr.trim();
+			if (stderr && !/user cancel/i.test(stderr)) {
+				ctx.ui.notify(`File picker failed: ${stderr.split("\n")[0]}`, "error");
+			}
+			return;
+		}
+		const picked = r.stdout
 			.split("\n")
 			.map((line) => line.trim()) // PowerShell pipes use CRLF; trim drops \r
 			.filter(Boolean)
-			.map((p) => (p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p)) // macOS folder dialog adds "/"
-			.map((p) => (p.includes(" ") ? `@"${p}"` : `@${p}`));
-		if (refs.length === 0) return;
+			.map((p) => (p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p)); // macOS folder dialog adds "/"
+		if (picked.length === 0) return;
+
+		const { refs, unquotable } = toRefs(picked, ctx.cwd);
 		const current = ctx.ui.getEditorText().trimEnd();
 		ctx.ui.setEditorText(current ? `${current} ${refs.join(" ")}` : refs.join(" "));
 		// setEditorText only mutates editor state; notify() is what repaints the TUI.
 		ctx.ui.notify(`Inserted ${refs.length} ${kind === "files" ? "file" : "folder"} reference(s)`, "info");
+		if (unquotable.length > 0) {
+			ctx.ui.notify(
+				`${unquotable.length} path(s) contain both a space and a quote, which @ references cannot express — fix manually: ${unquotable[0]}`,
+				"warning",
+			);
+		}
 	}
 
 	pi.registerCommand("pick", {

@@ -32,7 +32,7 @@ Restart pi afterwards (or run `/reload`).
 | `/pickdir` | Open the folder dialog |
 | `Ctrl+Shift+D` (macOS) / `Ctrl+Shift+R` (Windows) | Same |
 
-Picked paths are appended to the current draft as `@` references. Paths containing spaces are quoted (`@"a b.txt"`), matching pi's built-in `@` completion format. Cancelling the dialog changes nothing.
+Picked paths are appended to the current draft as `@` references — relative to the project when the file lives inside it (`@src/a.ts`, same as pi's own `@` completion), absolute otherwise (`@/tmp/other.txt`). Paths containing spaces are quoted (`@"a b.txt"`). Cancelling the dialog changes nothing.
 
 ### Why these keys
 
@@ -51,8 +51,11 @@ Both are checked against pi's own bindings and the terminal's:
 
 - **macOS**: `osascript -e 'choose file with multiple selections allowed'`, or `choose folder` for `/pickdir`. The folder dialog returns paths with a trailing `/`, which is stripped.
 - **Windows**: PowerShell driving the WinForms `OpenFileDialog` (files) or `FolderBrowserDialog` (folders). The script switches stdout to UTF-8 so non-ASCII (e.g. Chinese) paths survive the pipe.
+- Both dialogs open in the session's working directory, not in whatever directory was visited last.
 - No npm dependencies, and no shell in between — `pi.exec` spawns the process directly.
 - PowerShell's piped output is CRLF-terminated, so lines are trimmed rather than split naively.
+- Cancelling is silent, but a real failure (no GUI session, blocked permission, broken WinForms) surfaces as an error notification with the underlying message instead of doing nothing.
+- Paths with spaces need the `@"a b"` form; a path that contains a double quote cannot be quoted, because pi has no escape convention for it. Such a path is inserted raw and a warning names it, so you can fix that one reference by hand.
 - `ctx.ui.setEditorText()` only mutates editor state and does not repaint, so the insert is followed by `ctx.ui.notify()` (`notify → showStatus → ui.requestRender()`). Without that call the new text stays invisible until the next keypress.
 
 ## Limitations
@@ -66,7 +69,7 @@ Both are checked against pi's own bindings and the terminal's:
 npm test
 ```
 
-`test/file-picker.check.mjs` drives the extension through a faked pi API and covers eleven cases (per-platform shortcut registration, file and folder insert on both platforms, path quoting, trailing-slash trimming, cancel, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
+`test/file-picker.check.mjs` drives the extension through a faked pi API and covers fifteen cases (per-platform shortcut registration, file and folder insert on both platforms, relative vs absolute paths, path quoting, quote-in-name handling, script escaping of the working directory, trailing-slash trimming, silent cancel vs reported failure, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
 
 ## License
 

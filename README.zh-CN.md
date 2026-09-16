@@ -32,7 +32,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 | `/pickdir` | 弹出文件夹对话框 |
 | `Ctrl+Shift+D`（macOS）/ `Ctrl+Shift+R`（Windows） | 同上 |
 
-选中后会在当前草稿后面追加 `@` 引用，含空格的路径自动加引号（`@"a b.txt"`，与 pi 自带 `@` 补全格式一致）。取消对话框不会有任何改动。
+选中后会在当前草稿后面追加 `@` 引用：文件在项目内时用相对路径（`@src/a.ts`，与 pi 自带 `@` 补全一致），在项目外时用绝对路径（`@/tmp/other.txt`）；含空格的路径加引号（`@"a b.txt"`）。取消对话框不会有任何改动。
 
 ### 为什么是这几个键
 
@@ -51,8 +51,11 @@ pi install git:github.com/GoetheDady/pi-file-picker
 
 - **macOS**：`osascript -e 'choose file with multiple selections allowed'`，选目录用 `choose folder`；目录对话框返回的路径带结尾 `/`，已剥掉
 - **Windows**：PowerShell 调 WinForms `OpenFileDialog`（文件）或 `FolderBrowserDialog`（目录），脚本内把 stdout 切到 UTF-8，非 ASCII（中文）路径不乱码
+- 两个平台的对话框都开在会话的工作目录，而不是上次访问的位置
 - 不依赖任何 npm 依赖，也不经过 shell——`pi.exec` 直接 spawn 进程
 - Windows 的 PowerShell 管道输出是 CRLF，逐行 `trim()` 兼顾了这一层
+- 取消对话框是静默的；但真失败（无 GUI 会话、权限被拦、WinForms 不可用）会把底层错误用 `notify(..., "error")` 报出来，不再石沉大海
+- 含空格的路径需要用 `@"a b"` 形式；路径里含双引号时无法套引号（pi 没有转义约定），这类路径会原样插入并用 warning 点名，由你手动修那一条
 - `ctx.ui.setEditorText()` 只改编辑器状态、不触发重绘，所以插入后跟了一句 `ctx.ui.notify()`（`notify → showStatus → ui.requestRender()`），否则要等下次按键才看得到内容
 
 ## 限制
@@ -66,7 +69,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的 pi API 跑十一个场景（两端各自注册的快捷键、两端的文件/目录插入、路径引号、结尾斜杠剥离、取消、不支持平台、无 UI），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
+`test/file-picker.check.mjs` 用假的 pi API 跑十五个场景（两端各自注册的快捷键、两端的文件/目录插入、相对 vs 绝对路径、路径引号、含引号文件名、工作目录在脚本里的转义、结尾斜杠剥离、取消静默 vs 失败上报、不支持平台、无 UI），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
 
 ## License
 
