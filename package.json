@@ -1,6 +1,6 @@
 {
   "name": "pi-file-picker",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "macOS native file picker for pi — pick files in a real Finder dialog and insert @path references",
   "repository": {
     "type": "git",
