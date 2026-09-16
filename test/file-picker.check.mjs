@@ -32,8 +32,10 @@ const ctx = {
 ext(pi);
 
 if (!reg.commands.pick) throw new Error("missing /pick command");
+if (!reg.commands.pickdir) throw new Error("missing /pickdir command");
 if (!reg.shortcuts["ctrl+shift+o"]) throw new Error("missing ctrl+shift+o shortcut");
-console.log("registered: /pick, ctrl+shift+o");
+if (!reg.shortcuts["ctrl+shift+d"]) throw new Error("missing ctrl+shift+d shortcut");
+console.log("registered: /pick, /pickdir, ctrl+shift+o, ctrl+shift+d");
 
 const run = () => reg.shortcuts["ctrl+shift+o"].handler(ctx);
 
@@ -106,6 +108,34 @@ wrote = null;
 await reg.commands.pick.handler("", { ...ctx, hasUI: false });
 if (wrote !== null) throw new Error("no-ui should not write");
 console.log("7: no-ui ok");
+
+// 8. macOS folders: trailing "/" from `choose folder` is stripped
+setPlatform("darwin");
+execResult = { stdout: "/Users/x/My Documents/\n/tmp/\n", stderr: "", code: 0, killed: false };
+reset();
+await reg.shortcuts["ctrl+shift+d"].handler(ctx);
+if (!execCalls[0].args[1].includes("choose folder")) throw new Error("darwin folders must use `choose folder`");
+if (wrote !== '@"/Users/x/My Documents" @/tmp') throw new Error("bad folder path quoting/trimming");
+if (!/folder reference/.test(notified[0].m)) throw new Error("notify should say folder");
+console.log("8: mac folder ok");
+
+// 9. Windows folders: FolderBrowserDialog, single select
+setPlatform("win32");
+execResult = { stdout: "C:\\Program Files\\x\r\n", stderr: "", code: 0, killed: false };
+reset();
+await reg.commands.pickdir.handler("", ctx);
+if (!execCalls[0].args[3].includes("FolderBrowserDialog")) throw new Error("win32 folders must use FolderBrowserDialog");
+if (wrote !== '@"C:\\Program Files\\x"') throw new Error("bad windows folder quoting");
+console.log("9: windows folder ok");
+
+// 10. folder cancel exits 1
+setPlatform("darwin");
+execResult = { stdout: "", stderr: "", code: 1, killed: false };
+reset();
+editorText = "keep me";
+await run();
+if (wrote !== null || notified.length !== 0) throw new Error("folder cancel should not write");
+console.log("10: folder cancel ok");
 
 setPlatform(realPlatform);
 console.log("PASS");

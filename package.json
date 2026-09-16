@@ -1,7 +1,7 @@
 {
   "name": "pi-file-picker",
   "version": "0.2.0",
-  "description": "Native file picker for pi (macOS/Windows) — pick files in a real dialog and insert @path references",
+  "description": "Native file/folder picker for pi (macOS/Windows) — pick files or folders in a real dialog and insert @path references",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GoetheDady/pi-file-picker.git"
@@ -15,6 +15,7 @@
     "pi-package",
     "pi",
     "file-picker",
+    "folder-picker",
     "macos",
     "windows",
     "osascript",
