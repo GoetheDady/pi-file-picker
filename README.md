@@ -1,52 +1,62 @@
 # pi-file-picker
 
+[![npm](https://img.shields.io/npm/v/pi-file-picker.svg)](https://www.npmjs.com/package/pi-file-picker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-给 [pi](https://github.com/earendil-works/pi) 加一个**真正的系统文件选择窗口**（macOS / Windows）：点选文件，路径自动以 `@path` 的形式插进输入框。
+**English** | [简体中文](README.zh-CN.md)
 
-解决什么问题：终端全屏时只能靠 `@` 手动敲文件名，从 Finder/资源管理器拖文件很别扭。这个扩展直接弹出系统的文件对话框，鼠标点选即可，支持多选。
+A [pi](https://github.com/earendil-works/pi) extension that opens the **real system file dialog** (macOS / Windows) and inserts the files you pick into the editor as `@path` references.
 
-## 安装
+Why: in a fullscreen terminal the only way in is typing `@` paths by hand, and dragging files out of Finder or Explorer is awkward. This extension opens the native dialog instead — click a file (or several) and the references land in your prompt.
+
+## Install
 
 ```bash
 pi install npm:pi-file-picker
 ```
 
-或从 GitHub 装：
+Or from GitHub:
 
 ```bash
 pi install git:github.com/GoetheDady/pi-file-picker
 ```
 
-装完重启 pi（或 `/reload`）。
+Restart pi afterwards (or run `/reload`).
 
-## 用法
+## Usage
 
-| 操作 | 说明 |
+| Action | What it does |
 | --- | --- |
-| `/pick` | 弹出文件对话框 |
-| `Ctrl+Shift+O` | 同上 |
+| `/pick` | Open the file dialog |
+| `Ctrl+Shift+O` | Same |
 
-选中后会在当前草稿后面追加 `@` 引用，含空格的路径自动加引号（`@"a b.txt"`，与 pi 自带 `@` 补全格式一致）。取消对话框不会有任何改动。
+Picked paths are appended to the current draft as `@` references. Paths containing spaces are quoted (`@"a b.txt"`), matching pi's built-in `@` completion format. Cancelling the dialog changes nothing.
 
-## 实现说明
+## Requirements
 
-- macOS：`osascript -e 'choose file with multiple selections allowed'`；Windows：PowerShell 调 WinForms `OpenFileDialog`（脚本内设 UTF-8 输出，中文路径不乱码）。不依赖任何 npm 依赖
-- Windows 的 PowerShell 管道输出是 CRLF，逐行 `trim()` 兼顾了这一层
-- `ctx.ui.setEditorText()` 只改编辑器状态、不触发重绘，所以插入后跟了一句 `ctx.ui.notify()`（`notify → showStatus → ui.requestRender()`），否则要等下次按键才看得到内容
+- macOS or Windows; on Linux `/pick` reports that the platform is unsupported
+- Node ≥ 22
 
-## 限制
+## How it works
 
-- macOS 和 Windows 可用；Linux 上 `/pick` 会提示不支持
-- 只选文件，不支持选目录
+- **macOS**: `osascript -e 'choose file with multiple selections allowed'`.
+- **Windows**: PowerShell driving the WinForms `OpenFileDialog`. The script switches stdout to UTF-8 so non-ASCII (e.g. Chinese) paths survive the pipe.
+- No npm dependencies, and no shell in between — `pi.exec` spawns the process directly.
+- PowerShell's piped output is CRLF-terminated, so lines are trimmed rather than split naively.
+- `ctx.ui.setEditorText()` only mutates editor state and does not repaint, so the insert is followed by `ctx.ui.notify()` (`notify → showStatus → ui.requestRender()`). Without that call the new text stays invisible until the next keypress.
 
-## 开发
+## Limitations
+
+- Files only, no directory picking.
+- Linux is not supported yet.
+
+## Development
 
 ```bash
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的扩展 API 跑 mac/win 插入、引号、取消、不支持平台、无 UI 七种情况，不需要真实终端、不需要真实对话框；`tsc -p .` 负责对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu/macos/windows 三平台 × node 22/24 矩阵跑同一套。需要 Node ≥ 22。
+`test/file-picker.check.mjs` drives the extension through a faked pi API and covers seven cases (macOS and Windows insert, path quoting, cancel on both, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
 
 ## License
 
