@@ -1,6 +1,6 @@
 {
   "name": "pi-file-picker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Native file/folder picker for pi (macOS/Windows) — pick files or folders in a real dialog and insert @path references",
   "repository": {
     "type": "git",
