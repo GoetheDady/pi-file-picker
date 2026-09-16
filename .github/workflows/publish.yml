@@ -1,0 +1,30 @@
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # 换取一次性发布凭据，仅此一步需要
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # 防止 tag 与 package.json 版本不一致时把错的版本发出去（npm 不允许重发同版本）
+      - name: 校验 tag 与 package.json 版本一致
+        run: |
+          want="v$(node -p "require('./package.json').version")"
+          echo "tag=$GITHUB_REF_NAME  期望=$want"
+          [ "$want" = "$GITHUB_REF_NAME" ] || {
+            echo "::error::tag $GITHUB_REF_NAME 与 package.json 版本 $want 不一致"
+            exit 1
+          }
+      - run: npm test
+      - run: npm publish

@@ -9,13 +9,13 @@
 ## 安装
 
 ```bash
-pi install git:github.com/GoetheDady/pi-file-picker
+pi install npm:pi-file-picker
 ```
 
-或者本地路径：
+或从 GitHub 装：
 
 ```bash
-pi install /path/to/pi-file-picker
+pi install git:github.com/GoetheDady/pi-file-picker
 ```
 
 装完重启 pi（或 `/reload`）。
@@ -45,7 +45,7 @@ pi install /path/to/pi-file-picker
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的扩展 API 跑插入/引号/取消/无 UI 四种情况，不需要真实终端。需要 Node ≥ 22。
+`test/file-picker.check.mjs` 用假的扩展 API 跑插入/引号/取消/无 UI 四种情况，不需要真实终端、不需要 macOS；`tsc -p .` 负责对 `@earendil-works/pi-coding-agent` 的类型做静态检查。需要 Node ≥ 22。
 
 ## License
 
