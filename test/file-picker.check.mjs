@@ -92,6 +92,13 @@ await mac.reg.shortcuts["ctrl+shift+e"].handler(mac.ctx);
 if (mac.s.wrote !== null || mac.s.notified.length !== 0) throw new Error("mac cancel must stay silent");
 console.log("5: mac cancel silent ok");
 
+// cancel is localised — a Chinese macOS reports "用户取消。 (-128)", so only -128 is reliable
+mac.s.execResult = { stdout: "", stderr: "11:13: execution error: 用户取消。 (-128)", code: 1, killed: false };
+reset(mac);
+await mac.reg.shortcuts["ctrl+shift+e"].handler(mac.ctx);
+if (mac.s.wrote !== null || mac.s.notified.length !== 0) throw new Error("localised cancel must stay silent");
+console.log("5b: localised cancel silent ok");
+
 // real failure (no GUI session, permissions) must surface, not disappear
 mac.s.execResult = { stdout: "", stderr: "execution error: No user interaction allowed. (-1713)", code: 1, killed: false };
 reset(mac);

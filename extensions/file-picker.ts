@@ -117,11 +117,13 @@ export default function (pi: ExtensionAPI) {
 		}
 		const r = await pi.exec(job.cmd, job.args);
 		if (r.code !== 0) {
-			// Cancel is silent: macOS reports "User canceled", the Windows script
-			// exits 1 with no output. Anything else is a real failure (no GUI
-			// session, permissions, missing WinForms) and must not be swallowed.
+			// Cancel is silent: macOS reports AppleScript error -128 (localised, so
+			// match the code — "User canceled" / "用户取消"), the Windows script exits
+			// 1 with no output. Anything else is a real failure (no GUI session,
+			// permissions, missing WinForms) and must not be swallowed.
 			const stderr = r.stderr.trim();
-			if (stderr && !/user cancel/i.test(stderr)) {
+			const cancelled = stderr === "" || /-128\b/.test(stderr) || /user cancel/i.test(stderr);
+			if (!cancelled) {
 				ctx.ui.notify(`File picker failed: ${stderr.split("\n")[0]}`, "error");
 			}
 			return;

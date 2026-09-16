@@ -23,6 +23,7 @@
   ],
   "files": [
     "extensions",
+    "assets",
     "README.md",
     "README.zh-CN.md",
     "LICENSE"
@@ -30,7 +31,8 @@
   "pi": {
     "extensions": [
       "./extensions/file-picker.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/GoetheDady/pi-file-picker/main/assets/demo.png"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"

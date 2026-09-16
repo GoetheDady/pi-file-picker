@@ -5,6 +5,8 @@
 
 [English](README.md) | **简体中文**
 
+![pi-file-picker 对话框](https://raw.githubusercontent.com/GoetheDady/pi-file-picker/main/assets/demo.png)
+
 给 [pi](https://github.com/earendil-works/pi) 加一个**真正的系统文件/文件夹选择窗口**（macOS / Windows）：点选文件或目录，路径自动以 `@path` 的形式插进输入框。
 
 解决什么问题：终端全屏时只能靠 `@` 手动敲文件名，从 Finder / 资源管理器拖文件很别扭。这个扩展直接弹出系统的对话框，鼠标点选即可。

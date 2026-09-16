@@ -5,6 +5,8 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
+![pi-file-picker dialog](https://raw.githubusercontent.com/GoetheDady/pi-file-picker/main/assets/demo.png)
+
 A [pi](https://github.com/earendil-works/pi) extension that opens the **real system file/folder dialog** (macOS / Windows) and inserts what you pick into the editor as `@path` references.
 
 Why: in a fullscreen terminal the only way in is typing `@` paths by hand, and dragging files out of Finder or Explorer is awkward. This extension opens the native dialog instead — click a file or folder and the references land in your prompt.
