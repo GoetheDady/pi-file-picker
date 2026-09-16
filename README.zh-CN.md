@@ -28,11 +28,19 @@ pi install git:github.com/GoetheDady/pi-file-picker
 | 操作 | 说明 |
 | --- | --- |
 | `/pick` | 弹出文件对话框（可多选） |
-| `Ctrl+Shift+O` | 同上 |
+| `Ctrl+Shift+E` | 同上 |
 | `/pickdir` | 弹出文件夹对话框 |
-| `Ctrl+Shift+D` | 同上 |
+| `Ctrl+Shift+D`（macOS）/ `Ctrl+Shift+R`（Windows） | 同上 |
 
 选中后会在当前草稿后面追加 `@` 引用，含空格的路径自动加引号（`@"a b.txt"`，与 pi 自带 `@` 补全格式一致）。取消对话框不会有任何改动。
+
+### 为什么是这几个键
+
+两个平台的键位都避开了 pi 自身和终端的占用：
+
+- `Ctrl+Shift+O` 原本是 pi 的 session tree filter 键，`Ctrl+Shift+F` 是转录搜索——都不用
+- Windows Terminal 默认抢走一整片 `Ctrl+Shift+<字母>`，其中 `Ctrl+Shift+D` 是“复制标签页”，所以 Windows 的目录用 `Ctrl+Shift+R`
+- 想改键：`extensions/file-picker.ts` 里的 `keys`
 
 ## 要求
 
@@ -58,7 +66,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的 pi API 跑十个场景（两端各自的文件/目录插入、路径引号、结尾斜杠剥离、取消、不支持平台、无 UI），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
+`test/file-picker.check.mjs` 用假的 pi API 跑十一个场景（两端各自注册的快捷键、两端的文件/目录插入、路径引号、结尾斜杠剥离、取消、不支持平台、无 UI），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
 
 ## License
 

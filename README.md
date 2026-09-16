@@ -28,11 +28,19 @@ Restart pi afterwards (or run `/reload`).
 | Action | What it does |
 | --- | --- |
 | `/pick` | Open the file dialog |
-| `Ctrl+Shift+O` | Same |
+| `Ctrl+Shift+E` | Same |
 | `/pickdir` | Open the folder dialog |
-| `Ctrl+Shift+D` | Same |
+| `Ctrl+Shift+D` (macOS) / `Ctrl+Shift+R` (Windows) | Same |
 
 Picked paths are appended to the current draft as `@` references. Paths containing spaces are quoted (`@"a b.txt"`), matching pi's built-in `@` completion format. Cancelling the dialog changes nothing.
+
+### Why these keys
+
+Both are checked against pi's own bindings and the terminal's:
+
+- `Ctrl+Shift+O` was pi's tree-filter key, and `Ctrl+Shift+F` is transcript search — avoided.
+- Windows Terminal owns a block of `Ctrl+Shift+<letter>` shortcuts by default, including `Ctrl+Shift+D` (duplicate tab), which is why folders use `Ctrl+Shift+R` on Windows.
+- All shortcuts live in `keys` in `extensions/file-picker.ts` if you want different ones.
 
 ## Requirements
 
@@ -58,7 +66,7 @@ Picked paths are appended to the current draft as `@` references. Paths containi
 npm test
 ```
 
-`test/file-picker.check.mjs` drives the extension through a faked pi API and covers ten cases (file and folder insert on both platforms, path quoting, trailing-slash trimming, cancel, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
+`test/file-picker.check.mjs` drives the extension through a faked pi API and covers eleven cases (per-platform shortcut registration, file and folder insert on both platforms, path quoting, trailing-slash trimming, cancel, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
 
 ## License
 

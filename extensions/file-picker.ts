@@ -7,8 +7,14 @@
  *
  *   /pick          command, pick files
  *   /pickdir       command, pick folders
- *   ctrl+shift+o   shortcut, pick files
- *   ctrl+shift+d   shortcut, pick folders
+ *   ctrl+shift+e   shortcut, pick files
+ *   ctrl+shift+d   shortcut, pick folders (macOS)
+ *   ctrl+shift+r   shortcut, pick folders (Windows — see below)
+ *
+ * Shortcuts avoid pi's own bindings (ctrl+shift+o is "tree filter: cycle
+ * backward", ctrl+shift+f is transcript search) and the terminal's: on
+ * Windows, Windows Terminal owns ctrl+shift+d (duplicate tab) among others,
+ * so folders sit on ctrl+shift+r there.
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
@@ -99,12 +105,19 @@ export default function (pi: ExtensionAPI) {
 		handler: async (_args, ctx) => pick(ctx, "folders"),
 	});
 
-	pi.registerShortcut("ctrl+shift+o", {
+	// Windows Terminal swallows ctrl+shift+d (duplicate tab); ctrl+shift+e is
+	// free on both platforms. Resolved at registration so tests can stub the OS.
+	const keys =
+		process.platform === "win32"
+			? ({ files: "ctrl+shift+e", folders: "ctrl+shift+r" } as const)
+			: ({ files: "ctrl+shift+e", folders: "ctrl+shift+d" } as const);
+
+	pi.registerShortcut(keys.files, {
 		description: "Pick file(s) in a native dialog",
 		handler: (ctx) => pick(ctx, "files"),
 	});
 
-	pi.registerShortcut("ctrl+shift+d", {
+	pi.registerShortcut(keys.folders, {
 		description: "Pick folder(s) in a native dialog",
 		handler: (ctx) => pick(ctx, "folders"),
 	});
