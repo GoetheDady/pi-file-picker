@@ -34,7 +34,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 | `/pickdir` | 弹出文件夹对话框 |
 | `Ctrl+Shift+D`（macOS）/ `Ctrl+Shift+R`（Windows） | 同上 |
 
-选中后会在当前草稿后面追加 `@` 引用：文件在项目内时用相对路径（`@src/a.ts`，与 pi 自带 `@` 补全一致），在项目外时用绝对路径（`@/tmp/other.txt`）；含空格的路径加引号（`@"a b.txt"`）。取消对话框不会有任何改动。
+选中后会在当前草稿后面追加 `@` 引用：文件在项目内时用相对路径（`@src/a.ts`，与 pi 自带 `@` 补全一致），在项目外时用绝对路径（`@/tmp/other.txt`）；含空格的路径加引号（`@"a b.txt"`）。你写的内容原样保留，只在缺分隔符时补一个空格。取消对话框不会有任何改动。
 
 ### 为什么是这几个键
 
@@ -64,6 +64,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 
 - Windows 选目录一次只能选一个：`FolderBrowserDialog` 不支持多选，而支持多选的 `IFileDialog` 要在 PowerShell 里内联 C# 做 COM 互操作。macOS 可多选
 - Linux 暂不支持
+- RPC 模式下不可用：那里 `ctx.hasUI` 是 true，但 `getEditorText()` 恒返回 `""`（编辑器归客户端所有），所以「追加」做不到，`setEditorText()` 只会把你的草稿替换成孤零零的引用；对话框也会弹在跑 pi 的那台机器上，而不是客户端这边。`/pick` 会直接说明这一点，而不是把你的草稿冲掉。JSON 和 print 模式本来就没有 UI
 
 ## 开发
 
@@ -71,7 +72,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的 pi API 跑十五个场景（两端各自注册的快捷键、两端的文件/目录插入、相对 vs 绝对路径、路径引号、含引号文件名、工作目录在脚本里的转义、结尾斜杠剥离、取消静默 vs 失败上报、不支持平台、无 UI），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
+`test/file-picker.check.mjs` 用假的 pi API 跑十七个场景（两端各自注册的快捷键、两端的文件/目录插入、相对 vs 绝对路径、路径引号、含引号文件名、工作目录在脚本里的转义、结尾斜杠剥离、取消静默 vs 失败上报、不支持平台、无 UI、草稿结尾空白保留、RPC 模式拒绝），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
 
 ## License
 

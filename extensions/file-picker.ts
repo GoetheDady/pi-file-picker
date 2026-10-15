@@ -110,6 +110,18 @@ function toRefs(paths: string[], cwd: string) {
 export default function (pi: ExtensionAPI) {
 	async function pick(ctx: ExtensionContext, kind: Kind) {
 		if (!ctx.hasUI) return;
+		// RPC mode reports hasUI: true, but its getEditorText() always returns ""
+		// (the client owns the editor). Appending is therefore impossible, and
+		// setEditorText() would replace the user's draft with nothing but the refs;
+		// the dialog would also open on the machine running pi, not at the client.
+		// pi's docs say to guard terminal-only UI with ctx.mode === "tui".
+		if (ctx.mode !== "tui") {
+			ctx.ui.notify(
+				"File picker needs pi's terminal UI — in RPC mode its editor can't be read, so picked paths would replace your draft",
+				"error",
+			);
+			return;
+		}
 		const job = pickerFor(kind, ctx.cwd);
 		if (!job) {
 			ctx.ui.notify("File picker supports macOS and Windows only", "error");
@@ -136,8 +148,12 @@ export default function (pi: ExtensionAPI) {
 		if (picked.length === 0) return;
 
 		const { refs, unquotable } = toRefs(picked, ctx.cwd);
-		const current = ctx.ui.getEditorText().trimEnd();
-		ctx.ui.setEditorText(current ? `${current} ${refs.join(" ")}` : refs.join(" "));
+		// Keep the draft exactly as the user left it and add a separator only where
+		// one is missing. getEditorText() is lines.join("\n"), so a trailing newline
+		// is a line the user actually typed — trimming it away deletes it.
+		const current = ctx.ui.getEditorText();
+		const sep = current && !/\s$/.test(current) ? " " : "";
+		ctx.ui.setEditorText(`${current}${sep}${refs.join(" ")}`);
 		// setEditorText only mutates editor state; notify() is what repaints the TUI.
 		ctx.ui.notify(`Inserted ${refs.length} ${kind === "files" ? "file" : "folder"} reference(s)`, "info");
 		if (unquotable.length > 0) {

@@ -28,6 +28,7 @@ function boot(cwd) {
 	};
 	const ctx = {
 		hasUI: true,
+		mode: "tui",
 		cwd,
 		ui: {
 			getEditorText: () => s.editorText,
@@ -184,6 +185,37 @@ reset(mac);
 await mac.reg.commands.pick.handler("", { ...mac.ctx, hasUI: false });
 if (mac.s.wrote !== null) throw new Error("no-ui should not write");
 console.log("15: no-ui ok");
+
+// --- the user's draft must survive the insert ---
+// getEditorText() is lines.join("\n"), so a trailing newline is a line the user
+// really typed; trimming it away deletes their blank line.
+setPlatform("darwin");
+mac = boot(MAC);
+mac.s.execResult = { stdout: `${MAC}/README.md\n`, stderr: "", code: 0, killed: false };
+reset(mac);
+mac.s.editorText = "look at\n";
+await mac.reg.shortcuts["ctrl+shift+e"].handler(mac.ctx);
+if (mac.s.wrote !== "look at\n@README.md") throw new Error(`trailing newline must survive: ${JSON.stringify(mac.s.wrote)}`);
+// ...and an existing separator must not become two
+reset(mac);
+mac.s.editorText = "look at ";
+await mac.reg.shortcuts["ctrl+shift+e"].handler(mac.ctx);
+if (mac.s.wrote !== "look at @README.md") throw new Error(`separator must not double: ${JSON.stringify(mac.s.wrote)}`);
+console.log("16: draft whitespace preserved, separator not doubled");
+
+// RPC mode: hasUI is true, but getEditorText() returns "" — the client owns the
+// editor — so appending is impossible and setEditorText would replace the draft
+// with just the refs. The dialog would also open on pi's machine, not the client's.
+setPlatform("darwin");
+mac = boot(MAC);
+mac.s.execResult = { stdout: `${MAC}/README.md\n`, stderr: "", code: 0, killed: false };
+reset(mac);
+const rpc = { ...mac.ctx, mode: "rpc", ui: { ...mac.ctx.ui, getEditorText: () => "" } };
+await mac.reg.commands.pick.handler("", rpc);
+if (mac.s.execCalls.length !== 0) throw new Error("RPC mode must not open a native dialog");
+if (mac.s.wrote !== null) throw new Error("RPC mode must not write the editor — it would replace the draft");
+if (!mac.s.notified.some((n) => n.level === "error")) throw new Error("RPC mode must say why it did nothing");
+console.log("17: RPC mode refuses instead of replacing the draft");
 
 setPlatform(realPlatform);
 console.log("PASS");

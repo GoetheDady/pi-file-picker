@@ -34,7 +34,7 @@ Restart pi afterwards (or run `/reload`).
 | `/pickdir` | Open the folder dialog |
 | `Ctrl+Shift+D` (macOS) / `Ctrl+Shift+R` (Windows) | Same |
 
-Picked paths are appended to the current draft as `@` references — relative to the project when the file lives inside it (`@src/a.ts`, same as pi's own `@` completion), absolute otherwise (`@/tmp/other.txt`). Paths containing spaces are quoted (`@"a b.txt"`). Cancelling the dialog changes nothing.
+Picked paths are appended to the current draft as `@` references — relative to the project when the file lives inside it (`@src/a.ts`, same as pi's own `@` completion), absolute otherwise (`@/tmp/other.txt`). Paths containing spaces are quoted (`@"a b.txt"`). Your draft is left exactly as you typed it: a single space is added as a separator only when one isn't already there. Cancelling the dialog changes nothing.
 
 ### Why these keys
 
@@ -64,6 +64,7 @@ Both are checked against pi's own bindings and the terminal's:
 
 - No directory picking on Windows beyond one folder at a time — `FolderBrowserDialog` is single-select and the multi-select folder picker (`IFileDialog`) would need inline C# COM interop. macOS picks multiple folders.
 - Linux is not supported yet.
+- Not available in RPC mode. There `ctx.hasUI` is true but `getEditorText()` always returns `""` (the client owns the editor), so appending is impossible and `setEditorText()` would replace your draft with nothing but the references — and the dialog would open on the machine running pi, not at the client. `/pick` reports this instead of clobbering. JSON and print modes have no UI at all.
 
 ## Development
 
@@ -71,7 +72,7 @@ Both are checked against pi's own bindings and the terminal's:
 npm test
 ```
 
-`test/file-picker.check.mjs` drives the extension through a faked pi API and covers fifteen cases (per-platform shortcut registration, file and folder insert on both platforms, relative vs absolute paths, path quoting, quote-in-name handling, script escaping of the working directory, trailing-slash trimming, silent cancel vs reported failure, unsupported platform, no UI) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
+`test/file-picker.check.mjs` drives the extension through a faked pi API and covers seventeen cases (per-platform shortcut registration, file and folder insert on both platforms, relative vs absolute paths, path quoting, quote-in-name handling, script escaping of the working directory, trailing-slash trimming, silent cancel vs reported failure, unsupported platform, no UI, preservation of the draft's trailing whitespace, and the RPC-mode refusal) — no terminal or real dialog needed. `tsc -p .` type-checks the extension against `@earendil-works/pi-coding-agent`. CI runs the same suite on ubuntu / macos / windows × node 22 / 24.
 
 ## License
 
