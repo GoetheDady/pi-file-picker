@@ -217,5 +217,16 @@ if (mac.s.wrote !== null) throw new Error("RPC mode must not write the editor â€
 if (!mac.s.notified.some((n) => n.level === "error")) throw new Error("RPC mode must say why it did nothing");
 console.log("17: RPC mode refuses instead of replacing the draft");
 
+// A macOS file name may end with a space, and `POSIX path of` emits the path as
+// the whole line â€” trimming the line eats the name's last character and the ref
+// silently points at a different file.
+setPlatform("darwin");
+mac = boot(MAC);
+mac.s.execResult = { stdout: `${MAC}/report \n`, stderr: "", code: 0, killed: false };
+reset(mac);
+await mac.reg.shortcuts["ctrl+shift+e"].handler(mac.ctx);
+if (mac.s.wrote !== '@"report "') throw new Error(`trailing space in a name must survive: ${JSON.stringify(mac.s.wrote)}`);
+console.log("18: trailing whitespace in a file name survives");
+
 setPlatform(realPlatform);
 console.log("PASS");

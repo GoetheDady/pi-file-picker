@@ -142,7 +142,11 @@ export default function (pi: ExtensionAPI) {
 		}
 		const picked = r.stdout
 			.split("\n")
-			.map((line) => line.trim()) // PowerShell pipes use CRLF; trim drops \r
+			// Drop only the CR of PowerShell's CRLF: a path is the whole line, so
+			// trim() would eat a file name's own leading/trailing spaces, which
+			// macOS allows. ponytail: a name containing a newline still splits in
+			// two; NUL-separated output would fix that, no filesystem needs it.
+			.map((line) => line.replace(/\r$/, ""))
 			.filter(Boolean)
 			.map((p) => (p.length > 1 && p.endsWith("/") ? p.slice(0, -1) : p)); // macOS folder dialog adds "/"
 		if (picked.length === 0) return;

@@ -55,7 +55,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 - **Windows**：PowerShell 调 WinForms `OpenFileDialog`（文件）或 `FolderBrowserDialog`（目录），脚本内把 stdout 切到 UTF-8，非 ASCII（中文）路径不乱码
 - 两个平台的对话框都开在会话的工作目录，而不是上次访问的位置
 - 不依赖任何 npm 依赖，也不经过 shell——`pi.exec` 直接 spawn 进程
-- Windows 的 PowerShell 管道输出是 CRLF，逐行 `trim()` 兼顾了这一层
+- Windows 的 PowerShell 管道输出是 CRLF，只去掉行尾那个 `\r`。不能整行 `trim()`：路径就是整行，而 macOS 允许文件名以空格结尾，trim 会把它吃掉，引用就指到别的文件上去了
 - 取消对话框是静默的；但真失败（无 GUI 会话、权限被拦、WinForms 不可用）会把底层错误用 `notify(..., "error")` 报出来，不再石沉大海
 - 含空格的路径需要用 `@"a b"` 形式；路径里含双引号时无法套引号（pi 没有转义约定），这类路径会原样插入并用 warning 点名，由你手动修那一条
 - `ctx.ui.setEditorText()` 只改编辑器状态、不触发重绘，所以插入后跟了一句 `ctx.ui.notify()`（`notify → showStatus → ui.requestRender()`），否则要等下次按键才看得到内容
@@ -72,7 +72,7 @@ pi install git:github.com/GoetheDady/pi-file-picker
 npm test
 ```
 
-`test/file-picker.check.mjs` 用假的 pi API 跑十七个场景（两端各自注册的快捷键、两端的文件/目录插入、相对 vs 绝对路径、路径引号、含引号文件名、工作目录在脚本里的转义、结尾斜杠剥离、取消静默 vs 失败上报、不支持平台、无 UI、草稿结尾空白保留、RPC 模式拒绝），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
+`test/file-picker.check.mjs` 用假的 pi API 跑十八个场景（两端各自注册的快捷键、两端的文件/目录插入、相对 vs 绝对路径、路径引号、含引号文件名、工作目录在脚本里的转义、结尾斜杠剥离、取消静默 vs 失败上报、不支持平台、无 UI、草稿结尾空白保留、RPC 模式拒绝、文件名结尾空格保留），不需要真实终端或真实对话框；`tsc -p .` 对 `@earendil-works/pi-coding-agent` 的类型做静态检查。CI 在 ubuntu / macos / windows × node 22 / 24 三平台矩阵跑同一套。
 
 ## License
 
